@@ -32,3 +32,33 @@ def softmax(x: torch.Tensor, dim: int):
     x = torch.exp(x - max_val)
     sum = torch.sum(x, dim=dim, keepdim=True)
     return x / sum
+
+
+class RmsNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-5, device=None, dtype=None):
+        super().__init__()
+        self.d_model = d_model
+        self.eps = eps
+        w = torch.ones(d_model, device=device, dtype=dtype)
+        self.weights = torch.nn.Parameter(w)
+
+    def forward(self, x):
+        sum = torch.mean(x.to(torch.float32) ** 2, dim=-1, keepdim=True)
+        std = torch.sqrt(sum + self.eps)
+        return x / std * self.weights
+
+
+def silu(x):
+    return x * torch.sigmoid(x)
+
+
+class SwiGLU(nn.Module):
+    def __init__(self, d_ff, d_model, device=None, dtype=None):
+        super().__init__()
+        self.w1 = Linear(d_model, d_ff)
+        self.w2 = Linear(d_ff, d_model)
+        self.w3 = Linear(d_model, d_ff)
+
+    def forward(self, x):
+        y = self.w1(x)
+        return self.w2(self.w3(x) * silu(y))
