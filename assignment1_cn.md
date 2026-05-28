@@ -6,11 +6,22 @@
 
 ## 完成进度
 
+最近验证：2026-05-27，模型组件测试已通过至 `test_transformer_lm` 和 `test_transformer_lm_truncated_input`。
+
 | # | 题目ID | 状态 |
 |---|--------|------|
 | 8 | linear | ✅ 已通过 |
 | 9 | embedding | ✅ 已通过 |
+| 10 | rmsnorm | ✅ 已通过 |
+| 11 | positionwise_feedforward / swiglu | ✅ 已通过 |
+| 12 | rope | ✅ 已通过 |
 | 13 | softmax | ✅ 已通过 |
+| 14 | scaled_dot_product_attention | ✅ 已通过 |
+| 15 | multihead_self_attention | ✅ 已通过 |
+| 16 | transformer_block | ✅ 已通过 |
+| 17 | transformer_lm | ✅ 已通过 |
+| 19 | cross_entropy | ⬜ 下一步 |
+| 25 | data_loading | ⬜ 待做 |
 | 3 | train_bpe | ⬜ 进行中 |
 | 6 | tokenizer | ⬜ 待做 |
 
@@ -274,7 +285,7 @@ $$\text{FFN}(x) = W_2(\text{SiLU}(W_1 x) \odot W_3 x)$$
 
 $$R_k^i = \begin{pmatrix} \cos(\theta_{i,k}) & -\sin(\theta_{i,k}) \\ \sin(\theta_{i,k}) & \cos(\theta_{i,k}) \end{pmatrix}$$
 
-其中 θ_{i,k} = i / Θ^{(2k-2)/d}。
+其中 θ_{i,k} = i / Θ^{(2k)/d}。
 
 接口：
 - `__init__(self, theta, d_k, max_seq_len, device=None)`

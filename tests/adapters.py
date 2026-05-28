@@ -109,7 +109,7 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -143,7 +143,12 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mha = Multihead_Self_Attention(d_model, num_heads, False)
+    mha.proj_q.weights.data = q_proj_weight
+    mha.proj_k.weights.data = k_proj_weight
+    mha.proj_v.weights.data = v_proj_weight
+    mha.proj_o.weights.data = o_proj_weight
+    return mha(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -183,7 +188,13 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    token_positions = token_positions.unsqueeze(-2)
+    mha = Multihead_Self_Attention(d_model, num_heads, True, theta)
+    mha.proj_q.weights.data = q_proj_weight
+    mha.proj_k.weights.data = k_proj_weight
+    mha.proj_v.weights.data = v_proj_weight
+    mha.proj_o.weights.data = o_proj_weight
+    return mha(in_features, token_positions)
 
 
 def run_rope(
@@ -205,7 +216,8 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    rope = Rope(d_k=d_k, theta=theta)
+    return rope(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -278,7 +290,15 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer_block = TransformerBlock(
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        max_seq_len=max_seq_len,
+        theta=theta,
+    )
+    transformer_block.load_assignment_weights(weights)
+    return transformer_block(in_features)
 
 
 def run_transformer_lm(
@@ -360,7 +380,12 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer_lm = Transfoermer_LM(
+        vocab_size, context_length, d_model, num_layers, num_heads, d_ff, rope_theta
+    )
+    transformer_lm.load_assignment_weights(weights)
+    token_position = torch.arange(in_indices.shape[-1])
+    return transformer_lm(in_indices,token_position)
 
 
 def run_rmsnorm(
