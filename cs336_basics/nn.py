@@ -86,9 +86,7 @@ class Rope(nn.Module):
 
     def forward(self, x, token_positions):
         device = x.device if self.device is None else self.device
-        beta = self.theta ** (
-            (2 * torch.arange(self.d_k // 2, device=device)) / self.d_k
-        )
+        beta = self.theta ** ((2 * torch.arange(self.d_k // 2, device=device)) / self.d_k)
         theta = token_positions[..., None] / beta[None, ...]
         cos_theta = torch.cos(theta)
         sin_theta = torch.sin(theta)
@@ -155,21 +153,14 @@ class Multihead_Self_Attention(nn.Module):
             q = self.rope(q, token_position)
             k = self.rope(k, token_position)
         mask = torch.tril(torch.ones(S, S, dtype=torch.bool, device=x.device))
-        res = (
-            scaled_dot_product_attention(q, k, v, mask)
-            .transpose(1, 2)
-            .contiguous()
-            .view(B, S, self.d_model)
-        )
+        res = scaled_dot_product_attention(q, k, v, mask).transpose(1, 2).contiguous().view(B, S, self.d_model)
         return self.output_proj(res)
 
 
 class TransformerBlock(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, max_seq_len, theta, layer_idx=None):
         super().__init__()
-        self.attn = Multihead_Self_Attention(
-            d_model, num_heads, True, theta, max_seq_len
-        )
+        self.attn = Multihead_Self_Attention(d_model, num_heads, True, theta, max_seq_len)
         self.ln1 = RmsNorm(d_model)
         self.ln2 = RmsNorm(d_model)
         self.ffn = SwiGLU(d_ff, d_model)
@@ -197,10 +188,7 @@ Transfomer_Block = TransformerBlock
 
 
 class Transfoermer_LM(nn.Module):
-
-    def __init__(
-        self, vocab_size, context_len, d_model, num_layers, num_heads, d_ff, rope_theta
-    ):
+    def __init__(self, vocab_size, context_len, d_model, num_layers, num_heads, d_ff, rope_theta):
         super().__init__()
         self.num_layer = num_layers
         self.embedding = Embedding(vocab_size, d_model)
