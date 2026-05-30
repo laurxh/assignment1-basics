@@ -86,7 +86,9 @@ class Rope(nn.Module):
 
     def forward(self, x, token_positions):
         device = x.device if self.device is None else self.device
-        beta = self.theta ** ((2 * torch.arange(self.d_k // 2, device=device)) / self.d_k)
+        beta = self.theta ** (
+            (2 * torch.arange(self.d_k // 2, device=device)) / self.d_k
+        )
         theta = token_positions[..., None] / beta[None, ...]
         cos_theta = torch.cos(theta)
         sin_theta = torch.sin(theta)
@@ -153,14 +155,21 @@ class Multihead_Self_Attention(nn.Module):
             q = self.rope(q, token_position)
             k = self.rope(k, token_position)
         mask = torch.tril(torch.ones(S, S, dtype=torch.bool, device=x.device))
-        res = scaled_dot_product_attention(q, k, v, mask).transpose(1, 2).contiguous().view(B, S, self.d_model)
+        res = (
+            scaled_dot_product_attention(q, k, v, mask)
+            .transpose(1, 2)
+            .contiguous()
+            .view(B, S, self.d_model)
+        )
         return self.output_proj(res)
 
 
 class TransformerBlock(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, max_seq_len, theta, layer_idx=None):
         super().__init__()
-        self.attn = Multihead_Self_Attention(d_model, num_heads, True, theta, max_seq_len)
+        self.attn = Multihead_Self_Attention(
+            d_model, num_heads, True, theta, max_seq_len
+        )
         self.ln1 = RmsNorm(d_model)
         self.ln2 = RmsNorm(d_model)
         self.ffn = SwiGLU(d_ff, d_model)
@@ -188,7 +197,9 @@ Transfomer_Block = TransformerBlock
 
 
 class Transfoermer_LM(nn.Module):
-    def __init__(self, vocab_size, context_len, d_model, num_layers, num_heads, d_ff, rope_theta):
+    def __init__(
+        self, vocab_size, context_len, d_model, num_layers, num_heads, d_ff, rope_theta
+    ):
         super().__init__()
         self.num_layer = num_layers
         self.embedding = Embedding(vocab_size, d_model)
@@ -230,3 +241,49 @@ class Transfoermer_LM(nn.Module):
             x = layer(x, token_position)
         x = self.ln_final(x)
         return self.lm_head(x)
+
+
+def cross_entropy(inputs, targets):
+    max_val = torch.max(inputs, keepdim=True, dim=-1).values
+    loss = (
+        -inputs[torch.arange(inputs.shape[0]), targets]
+        + max_val.squeeze(-1)
+        + torch.log(torch.sum(torch.exp(inputs - max_val), dim=-1))
+    )
+    return torch.mean(loss)
+
+
+def gradient_clipping(parameters, max_l2_norm):
+    total_norm = 0
+    for p in parameters:
+        if p.grad is not None:
+            total_norm += torch.sum(p.grad**2)
+    sqrt_norm = torch.sqrt(total_norm)
+    if sqrt_norm > max_l2_norm:
+        scales = max_l2_norm / (sqrt_norm + 1e-6)
+        for p in parameters:
+            if p.grad is not None:
+                p.grad *= scales
+
+
+import math
+
+
+def get_lr_cosine_schedule(
+    it: int,
+    max_learning_rate: float,
+    min_learning_rate: float,
+    warmup_iters: int,
+    cosine_cycle_iters: int,
+):
+    if it < warmup_iters:
+        return it / warmup_iters * max_learning_rate
+    elif it <= cosine_cycle_iters:
+        return min_learning_rate + 0.5 * (
+            1
+            + math.cos(
+                (it - warmup_iters) / (cosine_cycle_iters - warmup_iters) * math.pi
+            )
+        ) * (max_learning_rate - min_learning_rate)
+    else:
+        return min_learning_rate
