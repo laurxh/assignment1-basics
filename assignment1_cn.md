@@ -6,7 +6,7 @@
 
 ## 完成进度
 
-最近验证：2026-05-27，模型组件测试已通过至 `test_transformer_lm` 和 `test_transformer_lm_truncated_input`。
+最近验证：2026-05-31，模型组件、BPE/tokenizer、优化器工具、数据加载和 checkpoint 相关代码测试已通过（`test_encode_memory_usage` 为预期 xfail/XPASS 不影响核心功能）。
 
 | # | 题目ID | 状态 |
 |---|--------|------|
@@ -20,10 +20,16 @@
 | 15 | multihead_self_attention | ✅ 已通过 |
 | 16 | transformer_block | ✅ 已通过 |
 | 17 | transformer_lm | ✅ 已通过 |
-| 19 | cross_entropy | ⬜ 下一步 |
-| 25 | data_loading | ⬜ 待做 |
-| 3 | train_bpe | ⬜ 进行中 |
-| 6 | tokenizer | ⬜ 待做 |
+| 3 | train_bpe | ✅ 已通过 |
+| 6 | tokenizer | ✅ 已通过 |
+| 19 | cross_entropy | ✅ 已通过 |
+| 21 | adamw | ✅ 已通过 |
+| 23 | learning_rate_schedule | ✅ 已通过 |
+| 24 | gradient_clipping | ✅ 已通过 |
+| 25 | data_loading | ✅ 已通过 |
+| 26 | checkpointing | ✅ 已通过 |
+| 4 | train_bpe_tinystories | ⬜ 下一步 |
+| 7 | tokenizer_experiments | ⬜ 待做 |
 
 ---
 
