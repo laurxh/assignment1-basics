@@ -5,7 +5,9 @@ import time
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
 
-def train_bpe(input_path, vocab_size, special_tokens) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+def train_bpe(
+    input_path, vocab_size, special_tokens
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     with open(input_path, "r", encoding="utf-8") as f:
         text = f.read()
     if special_tokens:
@@ -79,6 +81,69 @@ def train_bpe(input_path, vocab_size, special_tokens) -> tuple[dict[int, bytes],
     for token in special_tokens:
         vocab[len(vocab)] = token.encode("utf-8")
     return vocab, merges
+
+
+class Tokenizer:
+
+    def __init__(self, vocab, merges, special_tokens):
+        self.merges = merges
+        self.special_tokens = special_tokens or []
+        self.token_to_id = {token: id for id, token in vocab.items()}
+        self.id_to_token = vocab
+        self.merged_ranks = {pair: rank for rank, pair in enumerate(self.merges)}
+
+    def apply_bpe(self, text: str) -> list[int]:
+        word = [bytes([b]) for b in text.encode("utf-8")]
+        while len(word) > 1:
+            merged = False
+            min_rank = len(self.merged_ranks)
+            pos = 0
+            for i in range(len(word) - 1):
+                if (word[i], word[i + 1]) in self.merged_ranks:
+                    new_rank = self.merged_ranks[(word[i], word[i + 1])]
+                    if min_rank > new_rank:
+                        min_rank = new_rank
+                        pos = i
+                    merged = True
+            if merged == False:
+                break
+            new_word = word[:pos]
+            new_word.append(word[pos] + word[pos + 1])
+            new_word.extend(word[pos + 2 :])
+            word = new_word
+
+        idx = [self.token_to_id[tok] for tok in word]
+        return idx
+
+    def encode_ordinary(self, text: str) -> list[int]:
+        idx = []
+        for match in re.finditer(PAT, text):
+            token = match.group()
+            idx.extend(self.apply_bpe(token))
+        return idx
+
+    def encode(self, text: str) -> list[int]:
+        ids = []
+        if self.special_tokens:
+            special_tokens_sorted = sorted(self.special_tokens, key=len, reverse=True)
+            special_pattern = (
+                "(" + "|".join(re.escape(tok) for tok in special_tokens_sorted) + ")"
+            )
+            parts = re.split(special_pattern, text)
+        else:
+            parts = [text]
+        for chunk in parts:
+            if chunk in self.special_tokens:
+                ids.append(self.token_to_id[chunk.encode("utf-8")])
+            else:
+                ids.extend(self.encode_ordinary(chunk))
+        return ids
+    def encode_iterable(self, iterable):
+        for text in iterable:
+            yield from self.encode(text)
+    def decode(self, ids: list[int]) -> str:
+        token_bytes = b"".join(self.id_to_token[id] for id in ids)
+        return token_bytes.decode("utf-8", errors="replace")
 
 
 if __name__ == "__main__":
